@@ -34,3 +34,4 @@ spec:
       port: 80        # Service port
       targetPort: 80  # Container port# Optional: fixed NodePort
   type: LoadBalancer
+

@@ -9,5 +9,4 @@ spec:
     - protocol: TCP
       port: 80        # Service port
       targetPort: 80  # Container port
-      nodePort: 30080 # Optional: fixed NodePort
-  type: NodePort      # Change to LoadBalancer if using cloud provider
+  type: LoadBalancer     # Change to LoadBalancer if using cloud provider
