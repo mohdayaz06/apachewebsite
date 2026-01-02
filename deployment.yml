@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: apachewebsite
-        image: mohdayaz/apachewebsite:latest
+        image: mohdayazz/apachewebsite:latest
         ports:
         - containerPort: 80
 
