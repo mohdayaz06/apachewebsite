@@ -1,46 +1,65 @@
 pipeline {
     agent any
-      environment {
-        DOCKER_IMAGE = 'akshu20791/apachewebsite:latest'
-      //  KUBECONFIG = credentials('kubeconfig')
+
+    environment {
+        AWS_CREDENTIALS = credentials('aws_creds')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub_creds')
+        IMAGE_NAME = 'mohdayazz/apachewebsite:latest'
     }
 
     stages {
-        stage('Clone Git repository') {
+
+        stage('Clone GitHub') {
             steps {
-                 git 'https://github.com/akshu20791/apachewebsite/'
+                git branch: 'master',
+                    url: 'https://github.com/mohdayaz06/apachewebsite'
             }
         }
-        stage('run ansibleplaybook'){
-          steps{
-            ansiblePlaybook credentialsId: 'ansible-ssh', installation: 'ansible2', inventory: 'inventory.ini', playbook: 'installapche.yml', vaultTmpPath: ''
-          }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${IMAGE_NAME} .'
+            }
         }
-       stage('Docker Build & Push') {
-        steps {
-            script {
-                withDockerRegistry([credentialsId: 'docker']) {
-                    sh '''
-                    echo "Building Docker image..."
-                    docker build --no-cache -t $DOCKER_IMAGE -f Dockerfile .
-                    echo "Pushing Docker image to Docker Hub..."
-                    docker push $DOCKER_IMAGE
-                    '''
-                    }
+
+        stage('Login to DockerHub & Push Image') {
+            steps {
+                withDockerRegistry(
+                    credentialsId: 'dockerhub_creds',
+                    url: 'https://index.docker.io/v1/'
+                ) {
+                    sh 'docker push ${IMAGE_NAME}'
                 }
             }
         }
+
+        stage('Configure AWS EKS') {
+            steps {
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws_creds'
+                    ]
+                ]) {
+                    sh 'aws eks update-kubeconfig --region ap-south-1 --name ayazz-cluster'
+                }
+            }
+        }
+
         stage('Deploy to Kubernetes') {
             steps {
-                script{
-                     kubernetesDeploy (configs: 'deployment.yml' ,kubeconfigId: 'k8sconfig')
-                   
-                    }
-                }
+                sh 'kubectl apply -f deployment.yml'
+                sh 'kubectl apply -f service.yml'
             }
         }
     }
 
-
-
-
+    post {
+        success {
+            echo 'Pipeline executed successfully! Application deployed.'
+        }
+        failure {
+            echo 'Pipeline failed. Check the logs.'
+        }
+    }
+}
